@@ -34,11 +34,6 @@ public class DatasetReader implements DataReader {
         return books;
     }
     
-    @Override
-    public String getDataSourceType() {
-        return "CSV File";
-    }
-    
     private void parseHeader(String headerLine) {
         String[] headers = splitCsvLine(headerLine);
         columnMap.clear();
