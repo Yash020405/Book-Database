@@ -7,6 +7,10 @@ public class DatasetReader implements DataReader {
     
     @Override
     public List<Book> readBooks(String filePath) {
+        if (filePath == null || filePath.trim().isEmpty()) {
+            throw new IllegalArgumentException("File path cannot be null or empty");
+        }
+        
         List<Book> books = new ArrayList<>();
         
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
@@ -16,14 +20,20 @@ public class DatasetReader implements DataReader {
             }
             
             String line;
+            int lineNum = 0;
             while ((line = br.readLine()) != null) {
+                lineNum++;
                 try {
                     Book book = parseBookFromLine(line);
                     if (book != null) {
                         books.add(book);
                     }
+                } catch (NumberFormatException e) {
+                    System.err.println("Line " + lineNum + ": Invalid number - " + e.getMessage());
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    System.err.println("Line " + lineNum + ": Missing columns");
                 } catch (Exception e) {
-                    System.err.println("Warning: Skipping invalid line");
+                    System.err.println("Line " + lineNum + ": Error - " + e.getMessage());
                 }
             }
             
@@ -35,7 +45,7 @@ public class DatasetReader implements DataReader {
     }
     
     private void parseHeader(String headerLine) {
-        String[] headers = splitCsvLine(headerLine);
+        String[] headers = splitLine(headerLine);
         columnMap.clear();
         
         for (int i = 0; i < headers.length; i++) {
@@ -49,28 +59,34 @@ public class DatasetReader implements DataReader {
             return null;
         }
         
-        String[] data = splitCsvLine(line);
+        String[] data = splitLine(line);
         
-        String title = getColumnValue(data, "name");
-        String author = getColumnValue(data, "author");
-        double userRating = Double.parseDouble(getColumnValue(data, "user rating"));
-        int reviews = Integer.parseInt(getColumnValue(data, "reviews"));
-        double price = Double.parseDouble(getColumnValue(data, "price"));
-        int year = Integer.parseInt(getColumnValue(data, "year"));
-        String genre = getColumnValue(data, "genre");
+        String title = getValue(data, "name");
+        String author = getValue(data, "author");
+        double rating = Double.parseDouble(getValue(data, "user rating"));
+        int reviews = Integer.parseInt(getValue(data, "reviews"));
+        double price = Double.parseDouble(getValue(data, "price"));
+        int year = Integer.parseInt(getValue(data, "year"));
+        String genre = getValue(data, "genre");
         
-        return new Book(title, author, userRating, reviews, price, year, genre);
+        return new Book(title, author, rating, reviews, price, year, genre);
     }
     
-    private String getColumnValue(String[] data, String columnName) {
-        Integer columnIndex = columnMap.get(columnName.toLowerCase());
-        return data[columnIndex].trim();
+    private String getValue(String[] data, String columnName) {
+        Integer index = columnMap.get(columnName.toLowerCase());
+        if (index == null) {
+            throw new IllegalArgumentException("Column not found: " + columnName);
+        }
+        if (index >= data.length) {
+            throw new ArrayIndexOutOfBoundsException("Missing data for column: " + columnName);
+        }
+        return data[index].trim();
     }
     
-    private String[] splitCsvLine(String line) {
+    private String[] splitLine(String line) {
         List<String> fields = new ArrayList<>();
         boolean inQuotes = false;
-        StringBuilder currentField = new StringBuilder();
+        StringBuilder current = new StringBuilder();
         
         for (int i = 0; i < line.length(); i++) {
             char c = line.charAt(i);
@@ -78,14 +94,14 @@ public class DatasetReader implements DataReader {
             if (c == '"') {
                 inQuotes = !inQuotes;
             } else if (c == ',' && !inQuotes) {
-                fields.add(currentField.toString());
-                currentField = new StringBuilder();
+                fields.add(current.toString());
+                current = new StringBuilder();
             } else {
-                currentField.append(c);
+                current.append(c);
             }
         }
         
-        fields.add(currentField.toString());
+        fields.add(current.toString());
         return fields.toArray(new String[0]);
     }
 }

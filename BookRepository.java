@@ -5,27 +5,42 @@ public class BookRepository {
     private final Map<Double, List<Book>> booksByRating = new HashMap<>();
 
     public BookRepository(List<Book> books) {
+        if (books == null) {
+            throw new IllegalArgumentException("Books list cannot be null");
+        }
+        
         for (Book book : books) {
-            booksByAuthor.computeIfAbsent(book.getAuthor(), k -> new ArrayList<>()).add(book);
+            if (book == null) {
+                System.err.println("Warning: Skipping null book");
+                continue;
+            }
+            booksByAuthor.computeIfAbsent(book.getAuthor().toLowerCase(), k -> new ArrayList<>()).add(book);
             booksByRating.computeIfAbsent(book.getUserRating(), k -> new ArrayList<>()).add(book);
         }
     }
 
     public int countBooksByAuthor(String author) {
-        return findBooksByAuthor(author).size();
+        if (author == null) {
+            return 0;
+        }
+        return booksByAuthor.getOrDefault(author.toLowerCase(), Collections.emptyList()).size();
     }
 
     public Set<String> listAllAuthors() {
-        return booksByAuthor.keySet();
+        Set<String> authors = new HashSet<>();
+        for (List<Book> bookList : booksByAuthor.values()) {
+            if (!bookList.isEmpty()) {
+                authors.add(bookList.get(0).getAuthor());
+            }
+        }
+        return authors;
     }
 
     public List<Book> findBooksByAuthor(String author) {
-        for (Map.Entry<String, List<Book>> entry : booksByAuthor.entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(author)) {
-                return entry.getValue();
-            }
+        if (author == null) {
+            return Collections.emptyList();
         }
-        return Collections.emptyList();
+        return booksByAuthor.getOrDefault(author.toLowerCase(), Collections.emptyList());
     }
 
     public List<Book> findBooksByRating(double rating) {
@@ -33,7 +48,10 @@ public class BookRepository {
     }
 
     public Map<String, Double> findBooksAndPricesByAuthor(String author) {
-        List<Book> books = findBooksByAuthor(author);
+        if (author == null) {
+            return Collections.emptyMap();
+        }
+        List<Book> books = booksByAuthor.getOrDefault(author.toLowerCase(), Collections.emptyList());
         Map<String, Double> result = new HashMap<>();
         for (Book book : books) {
             result.put(book.getTitle(), book.getPrice());
